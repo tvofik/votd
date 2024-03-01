@@ -1,5 +1,6 @@
 # Verse Of The Day
 Get the verse of the day in json from [YouVersion.](https://www.bible.com/YouVersion)  
+
 Example
 ```json
 {
