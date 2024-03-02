@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type VerseResponse struct {
@@ -21,6 +23,7 @@ type Details struct {
 	Text      string `json:"text"`
 	Reference string `json:"reference"`
 	Version   string `json:"version"`
+	Combined  string `json:"combined"`
 }
 
 func extractVersion(text string) (string, string) {
@@ -75,6 +78,7 @@ func getVOTD(c echo.Context) error {
 				Text:      text,
 				Reference: reference,
 				Version:   version,
+				Combined:  fmt.Sprintf("%s - %s %s", text, reference, version),
 			},
 		},
 	}
@@ -85,8 +89,17 @@ func getVOTD(c echo.Context) error {
 func main() {
 
 	e := echo.New()
+
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
 	e.GET("/api/v1/votd", getVOTD)
 
-	e.Logger.Fatal(e.Start(":8300"))
+	httpPort := os.Getenv("PORT")
+	if httpPort == "" {
+		httpPort = "8330"
+	}
+
+	e.Logger.Fatal(e.Start(":" + httpPort))
 
 }
