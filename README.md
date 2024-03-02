@@ -6,9 +6,10 @@ Example
 {
     "verse": {
         "details": {
-            "text": "If we confess our sins, he is faithful and just to forgive us our sins and to cleanse us from all unrighteousness.",
-            "reference": "1 John 1:9",
-            "version": "ESV"
+            "text": "Be kind to one another, tenderhearted, forgiving one another, as God in Christ forgave you.",
+            "reference": "Ephesians 4:32",
+            "version": "ESV",
+            "combined": "Be kind to one another, tenderhearted, forgiving one another, as God in Christ forgave you. - Ephesians 4:32 ESV"
         }
     }
 }
