@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -27,25 +26,23 @@ type votw struct {
 	Days []votd `json:"days"`
 }
 
-func getPageContent(contentType string) *goquery.Selection {
+func getPageContent(contentType string) (*goquery.Selection, error) {
 	url := "https://www.bible.com/verse-of-the-day"
 	// Request the HTML page
 	response, err := http.Get(url)
 	if err != nil {
+		return nil, err
 		// return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error making request: %s", err))
-		log.Fatalf("Error making request: %s", err)
+		// log.Fatalf("Error making request: %s", err)
 	}
 
 	defer response.Body.Close()
 
-	if response.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", response.StatusCode, response.Status)
-	}
-
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(response.Body)
 	if err != nil {
-		log.Fatal("Failed to parse the HTML document", err)
+		return nil, err
+		// log.Fatal("Failed to parse the HTML document", err)
 	}
 
 	// Find the parent element
@@ -56,17 +53,22 @@ func getPageContent(contentType string) *goquery.Selection {
 	votwHTML := parent.Children().Eq(2) //!For VOTW
 
 	if contentType == "day" {
-		return votdHTML
+		return votdHTML, nil
 	} else if contentType == "week" {
-		return votwHTML
+		return votwHTML, nil
 	} else {
-		return nil
+		return nil, fmt.Errorf("unable to get content")
 	}
 }
 
 func getVOTD(c echo.Context) error {
+	// Used to parse and get the  content for verse of the day
 	contentType := "day"
-	votdHTML := getPageContent(contentType)
+	votdHTML, err := getPageContent(contentType)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
 
 	dateHTML := votdHTML.Find("p").First()
 	textHTML := votdHTML.Find("div.mbs-3>a").First()
@@ -89,11 +91,14 @@ func getVOTD(c echo.Context) error {
 }
 
 func getVOTW(c echo.Context) error {
+	// Used to parse the content and get the bible verse of the week
 	votwResponse := votw{}
-
 	contentType := "week"
-	votwHTML := getPageContent(contentType)
 
+	votwHTML, err := getPageContent(contentType)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
 	days := votwHTML.Find("div.mlb-2")
 
 	days.Each(func(i int, element *goquery.Selection) {
