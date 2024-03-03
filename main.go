@@ -23,7 +23,7 @@ type Verse struct {
 }
 
 type votw struct {
-	Days []votd `json:"days"`
+	Verses []votd `json:"days"`
 }
 
 func getPageContent(contentType string) (*goquery.Selection, error) {
@@ -118,7 +118,7 @@ func getVOTW(c echo.Context) error {
 				Combined:  fmt.Sprintf("%s - %s", text, reference),
 			},
 		}
-		votwResponse.Days = append(votwResponse.Days, votdResponse)
+		votwResponse.Verses = append(votwResponse.Verses, votdResponse)
 	})
 	return c.JSON(http.StatusOK, votwResponse)
 }
