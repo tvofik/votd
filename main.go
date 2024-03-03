@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
 
@@ -13,42 +12,30 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-type VerseResponse struct {
+type votd struct {
 	Verse Verse `json:"verse"`
 }
+
 type Verse struct {
-	Details Details `json:"details"`
-}
-type Details struct {
+	Date      string `json:"date"`
 	Text      string `json:"text"`
 	Reference string `json:"reference"`
-	Version   string `json:"version"`
 	Combined  string `json:"combined"`
 }
 
-func extractVersion(text string) (string, string) {
-	// Define a regular expression to match Bible versions (assuming they are in parentheses)
-	re := regexp.MustCompile(`^(.*?)\s*\(([^)]+)\)$`)
-	// Find matches in the text
-	matches := re.FindStringSubmatch(text)
-
-	// Extract the Bible version (if found)
-	if len(matches) >= 2 {
-		bibleReference := matches[1]
-		bibleVersion := matches[2]
-		return bibleReference, bibleVersion
-	}
-	// Return an empty string if no match is found
-	return text, ""
+type votw struct {
+	Days []votd `json:"days"`
 }
 
-func getVOTD(c echo.Context) error {
+func getPageContent(contentType string) *goquery.Selection {
 	url := "https://www.bible.com/verse-of-the-day"
 	// Request the HTML page
 	response, err := http.Get(url)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error making request: %s", err))
+		// return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error making request: %s", err))
+		log.Fatalf("Error making request: %s", err)
 	}
+
 	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
@@ -61,29 +48,74 @@ func getVOTD(c echo.Context) error {
 		log.Fatal("Failed to parse the HTML document", err)
 	}
 
-	votdParent := doc.Find("h1").First().Parent()
-	innerVOTDHTML := votdParent.Find("div.mbs-3")
+	// Find the parent element
+	parentSelector := "main>div.w-full>div.w-full>div"
+	parent := doc.Find(parentSelector)
 
-	// Find the first a tag
-	textHTML := innerVOTDHTML.Find("a").First()
-	// Get the Next element
+	votdHTML := parent.Children().Eq(0) //!For VOTD
+	votwHTML := parent.Children().Eq(2) //!For VOTW
+
+	if contentType == "day" {
+		return votdHTML
+	} else if contentType == "week" {
+		return votwHTML
+	} else {
+		return nil
+	}
+}
+
+func getVOTD(c echo.Context) error {
+	contentType := "day"
+	votdHTML := getPageContent(contentType)
+
+	dateHTML := votdHTML.Find("p").First()
+	textHTML := votdHTML.Find("div.mbs-3>a").First()
 	referenceHTML := textHTML.Next()
 
+	date := dateHTML.Text()
 	text := textHTML.Text()
-	reference, version := extractVersion(referenceHTML.Text())
+	reference := referenceHTML.Text()
 
-	resp := &VerseResponse{
+	votdResponse := votd{
 		Verse: Verse{
-			Details: Details{
-				Text:      text,
-				Reference: reference,
-				Version:   version,
-				Combined:  fmt.Sprintf("%s - %s %s", text, reference, version),
-			},
+			Date:      date,
+			Text:      text,
+			Reference: reference,
+			Combined:  fmt.Sprintf("%s - %s", text, reference),
 		},
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, votdResponse)
+}
+
+func getVOTW(c echo.Context) error {
+	votwResponse := votw{}
+
+	contentType := "week"
+	votwHTML := getPageContent(contentType)
+
+	days := votwHTML.Find("div.mlb-2")
+
+	days.Each(func(i int, element *goquery.Selection) {
+		dateHTML := element.Find("p").First()
+		textHTML := element.Find("a").First()
+		referenceHTML := textHTML.Next()
+
+		date := dateHTML.Text()
+		text := textHTML.Text()
+		reference := referenceHTML.Text()
+
+		votdResponse := votd{
+			Verse: Verse{
+				Date:      date,
+				Text:      text,
+				Reference: reference,
+				Combined:  fmt.Sprintf("%s - %s", text, reference),
+			},
+		}
+		votwResponse.Days = append(votwResponse.Days, votdResponse)
+	})
+	return c.JSON(http.StatusOK, votwResponse)
 }
 
 func main() {
@@ -94,6 +126,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	e.GET("/api/v1/votd", getVOTD)
+	e.GET("/api/v1/votw", getVOTW)
 
 	httpPort := os.Getenv("PORT")
 	if httpPort == "" {
@@ -101,5 +134,4 @@ func main() {
 	}
 
 	e.Logger.Fatal(e.Start(":" + httpPort))
-
 }
