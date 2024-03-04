@@ -23,7 +23,7 @@ type Verse struct {
 }
 
 type votw struct {
-	Verses []votd `json:"days"`
+	Verses []votd `json:"verses"`
 }
 
 func getPageContent(contentType string) (*goquery.Selection, error) {
