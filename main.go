@@ -28,12 +28,11 @@ type votw struct {
 
 func getPageContent(contentType string) (*goquery.Selection, error) {
 	url := "https://www.bible.com/verse-of-the-day"
+
 	// Request the HTML page
 	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
-		// return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error making request: %s", err))
-		// log.Fatalf("Error making request: %s", err)
 	}
 
 	defer response.Body.Close()
@@ -42,15 +41,14 @@ func getPageContent(contentType string) (*goquery.Selection, error) {
 	doc, err := goquery.NewDocumentFromReader(response.Body)
 	if err != nil {
 		return nil, err
-		// log.Fatal("Failed to parse the HTML document", err)
 	}
 
 	// Find the parent element
 	parentSelector := "main>div.w-full>div.w-full>div"
 	parent := doc.Find(parentSelector)
 
-	votdHTML := parent.Children().Eq(0) //!For VOTD
-	votwHTML := parent.Children().Eq(2) //!For VOTW
+	votdHTML := parent.Children().Eq(0)
+	votwHTML := parent.Children().Eq(2)
 
 	if contentType == "day" {
 		return votdHTML, nil
@@ -62,7 +60,7 @@ func getPageContent(contentType string) (*goquery.Selection, error) {
 }
 
 func getVOTD(c echo.Context) error {
-	// Used to parse and get the  content for verse of the day
+	// Used to parse and get the content for verse of the day
 	contentType := "day"
 	votdHTML, err := getPageContent(contentType)
 
